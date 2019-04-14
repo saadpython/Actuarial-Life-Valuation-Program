@@ -1,0 +1,871 @@
+import pandas as pd
+import numpy as np
+import xlrd
+import xlsxwriter
+import time
+from datetime import datetime
+I_Rate = 0.0375
+from fpdf import FPDF
+# from tqdm import tqdm
+
+
+
+data = pd.read_csv("ABC123.csv")
+ 
+
+print(" ")
+print("Valuation in Process")
+print(" ")
+
+
+def main():
+    start_time = time.time()
+
+    PLAN1 = data[(data.PRDUCT_NAME == 'PLAN1') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN2 = data[(data.PRDUCT_NAME == 'PLAN2') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN3 = data[(data.PRDUCT_NAME == 'PLAN3') & (data.POL_STATUS.isin(['Approved']))]
+    PLAN4 = data[(data.PRDUCT_NAME == 'PLAN4') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN5 = data[(data.PRDUCT_NAME == 'PLAN5') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN7 = data[(data.PRDUCT_NAME == 'PLAN7') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN6 = data[(data.PRDUCT_NAME == 'PLAN6') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN8 = data[(data.PRDUCT_NAME == 'PLAN8') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN11 = data[(data.PRDUCT_NAME == 'PLAN11') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN12 = data[(data.PRDUCT_NAME == 'PLAN12') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN9 = data[(data.PRDUCT_NAME == 'PLAN9') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+    PLAN10 = data[(data.PRDUCT_NAME == 'PLAN10') & (data.POL_STATUS.isin(['Approved', 'ANF']))]
+
+    PLAN1_” “ = data[
+        (data.PRDUCT_NAME == 'PLAN1') & (data.POL_STATUS.isin(['“ “', 'Paidup'])) & (data.POL_PREM_PAID_YEAR >= 2)]
+    PLAN10_” “ = data[
+        (data.PRDUCT_NAME == 'PLAN10') & (data.POL_STATUS.isin(['“ “', 'Paidup'])) & (data.POL_PREM_PAID_YEAR >= 2)]
+
+    path = "Final_Results19.xlsx"
+
+    Val_date = pd.to_datetime('31-03-2019')
+    writer = pd.ExcelWriter(path, engine='xlsxwriter')
+
+    PLAN1.to_excel(writer, sheet_name='PLAN1', index_label=False, index=False, header=True)
+    PLAN2.to_excel(writer, sheet_name='PLAN2', index_label=False, index=False, header=True)
+    PLAN3.to_excel(writer, sheet_name='PLAN3', index_label=False, index=False, header=True)
+    PLAN4.to_excel(writer, sheet_name='PLAN4', index_label=False, index=False, header=True)
+    PLAN5.to_excel(writer, sheet_name='SILK SECURE', index_label=False, index=False, header=True)
+    PLAN7.to_excel(writer, sheet_name='PLAN7', index_label=False, index=False, header=True)
+    PLAN6.to_excel(writer, sheet_name='PLAN6', index_label=False, index=False, header=True)
+    PLAN8.to_excel(writer, sheet_name='PLAN8', index_label=False, index=False, header=True)
+    PLAN11.to_excel(writer, sheet_name='PLAN11', index_label=False, index=False, header=True)
+    PLAN12.to_excel(writer, sheet_name='PLAN12', index_label=False, index=False, header=True)
+    PLAN9.to_excel(writer, sheet_name='PLAN9', index_label=False, index=False, header=True)
+    PLAN10.to_excel(writer, sheet_name='PLAN10', index_label=False, index=False, header=True)
+    PLAN1_” “.to_excel(writer, sheet_name='PLAN1_” “', index_label=False, index=False, header=True)
+    PLAN10_” “.to_excel(writer, sheet_name='PLAN10_” “', index_label=False, index=False, header=True)
+
+    # PLAN13.to_excel(writer, sheet_name = 'SILK Takaful', index_label=False, index=False, header=True)
+    # PLAN8.to_excel(writer, sheet_name = 'PLAN8', index_label=False, index=False, header=True)
+    # PLAN14.to_excel(writer, sheet_name = 'PLAN14', index_label=False, index=False, header=True)
+
+    writer.save()
+    writer.close()
+
+    Rates = pd.read_csv("Rates.csv", index_col='AgeTerm')
+    mortality = pd.read_csv("Mortality.csv", index_col='Age')
+
+    writer = pd.ExcelWriter(path, engine='xlsxwriter')
+
+    sheet_1 = pd.read_excel(path, sheet_name=0)
+    sheet_1['Total_PTF'] = sheet_1['PTF_RATE'] * sheet_1['PTF_AMT']
+    sheet_1['DOB'] = pd.to_datetime(sheet_1['DOB'])    #format='%Y-%m-%d'
+    sheet_1['ISSUANCE_DT'] = pd.to_datetime(sheet_1['ISSUANCE_DT'])
+    sheet_1['Entry_Age'] = ((((sheet_1['ISSUANCE_DT'] - sheet_1['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_1['Maturity_Age'] = (sheet_1['Entry_Age'] + sheet_1['POL_TERM']).round()
+    sheet_1['Cond_PAID_Year'] = np.where(sheet_1['POL_STATUS'] == 'ANF', sheet_1['POL_RISK_PAID_YEAR'],sheet_1['POL_PREM_PAID_YEAR'])
+    sheet_1['Completed_Months1'] = (((Val_date - sheet_1['ISSUANCE_DT']).dt.days) / 365 * 12)
+    sheet_1['Completed_Months2'] = np.where(sheet_1['POL_PREM_PAID_YEAR'] == sheet_1['PAYING_TERM'] , sheet_1['POL_TERM'],sheet_1['Cond_PAID_Year']) * 12
+    sheet_1['Completed_Months'] = sheet_1[['Completed_Months1','Completed_Months2']].min(axis=1)
+    sheet_1['Time'] = (sheet_1['Completed_Months'] / 12).astype(int)
+    sheet_1['Time + 1'] = sheet_1['Time'] + 1
+    sheet_1["Fractional_Time"] = ((sheet_1['Completed_Months'] - (sheet_1['Time'] * 12)) / 12).astype(float)
+    sheet_1['Term'] = sheet_1['Entry_Age'].astype(str) + ("-") + sheet_1['POL_TERM'].astype(str)
+
+    sheet_1['1000_Axn'] = sheet_1.Term.map(Rates['1000Axn'])
+    sheet_1["sub1"] = pd.DataFrame(20 - sheet_1['PAYING_TERM']).astype(int)
+    height = 10000
+    width = 1
+    sheet_1["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    sheet_1["Max"] = (sheet_1.loc[:, ["Null", "sub1"]].apply(max, axis=1).astype(int)) * 0.05
+    sheet_1['1Ex'] = sheet_1.Term.map(Rates['1Ex'])
+    # sheet_1["1000nEx"] = "  "
+    sheet_1["PremTerm"] = (sheet_1['Entry_Age'] + 1).astype(str) + ("-") + (sheet_1['PAYING_TERM'] - 1).astype(str)
+    sheet_1["äx+1:m-1"] = sheet_1.PremTerm.map(Rates['axn'])
+    sheet_1["(NP)xn"] = ((sheet_1['1000_Axn']) / 1000 * sheet_1["SA"]) / (
+            sheet_1["Max"] + (sheet_1['1Ex'] * sheet_1["äx+1:m-1"]))
+
+    print(" ")
+    print("Done 10%...")
+    print(" ")
+
+    sheet_1["Term2"] = (sheet_1['Entry_Age'] + sheet_1['Time + 1']).astype(str) + ("-") + (
+            sheet_1['POL_TERM'] - sheet_1['Time + 1']).astype(str)
+    sheet_1["1000_Ax+t:n-t "] = (sheet_1.Term2.map(Rates['1000Axn'])).astype(float)
+    sheet_1["1000_Ax+t:n-t "].fillna(0, inplace=True)
+    # sheet_1["1000 n-tEx+t "] = " "
+    sheet_1["(NP)xn2"] = sheet_1["(NP)xn"].astype(float)
+
+    sheet_1["Term3"] = (sheet_1['Entry_Age'] + sheet_1["Time + 1"]).astype(str) + ("-") + (
+            sheet_1['PAYING_TERM'] - sheet_1['Time + 1']).astype(str)
+    sheet_1["äx+t:m-t"] = (sheet_1.Term3.map(Rates['axn'])).astype(float)
+    sheet_1["äx+t:m-t"].fillna(0, inplace=True)
+    sheet_1["xVt_(t+1)"] = (((sheet_1["1000_Ax+t:n-t "] / 1000) * sheet_1["SA"]) - (
+            sheet_1["(NP)xn"] * sheet_1["äx+t:m-t"])).astype(float)
+
+    sheet_1["Term4"] = (sheet_1['Entry_Age'] + sheet_1['Time']).astype(str) + ("-") + (
+            sheet_1["POL_TERM"] - sheet_1['Time']).astype(str)
+    sheet_1["1000_Ax+t:n-t_(t=t)"] = (sheet_1.Term4.map(Rates['1000Axn'])).astype(float)
+    # sheet_1["1000_n-tEx+t (t=t)"] = " "
+    sheet_1["(NP)xn3"] = sheet_1["(NP)xn"]
+    sheet_1["Term5"] = (sheet_1['Entry_Age'] + sheet_1['Time']).astype(str) + ("-") + (
+            sheet_1["PAYING_TERM"] - sheet_1['Time']).astype(str)
+    sheet_1["äx+t:m-t_(t=t)"] = (sheet_1.Term5.map(Rates['axn'])).astype(float)
+
+    sheet_1["sub2"] = ((sheet_1["1000_Ax+t:n-t_(t=t)"] / 1000) * sheet_1["SA"]) - (
+            sheet_1["(NP)xn"] * sheet_1["äx+t:m-t_(t=t)"])
+    sheet_1["xVt_(t=t)"] = (sheet_1.loc[:, ["Null", "sub2"]].apply(max, axis=1).astype(float))
+
+    sheet_1["sub3"] = ((sheet_1["xVt_(t+1)"] - sheet_1["xVt_(t=t)"]) * sheet_1["Fractional_Time"]) + sheet_1[
+        "xVt_(t=t)"]
+    sheet_1["(xVt +1 - xVt )"] = (sheet_1.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_1['Entry_Age'] + sheet_1['Time']).astype(int)
+    sheet_1["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_1['SA']
+
+    sheet_1["Unearned_Period"] = 1 - sheet_1["Fractional_Time"]
+
+    # Xvt = pd.DataFrame(sheet_1["(xVt +1 - xVt )"])
+    sheet_1["Reserves"] = pd.DataFrame((sheet_1["Annual_Mort_Cost_Risk"] * sheet_1["Unearned_Period"]))
+    sheet_1["Final_Reserves"] = (sheet_1.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN2 VALUATION BEGIN HERE :
+
+    sheet_2 = pd.read_excel(path, sheet_name=1)
+    sheet_2['Total_PTF'] = sheet_2['PTF_RATE'] * sheet_2['PTF_AMT']
+    sheet_2['DOB'] = pd.to_datetime(sheet_2['DOB'])
+    sheet_2['ISSUANCE_DT'] = pd.to_datetime(sheet_2['ISSUANCE_DT'])
+    sheet_2['Entry_Age'] = ((((sheet_2['ISSUANCE_DT'] - sheet_2['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_2['Maturity_Age'] = (sheet_2['Entry_Age'] + sheet_2['POL_TERM']).round()
+    sheet_2['Cond_PAID_Year'] = np.where(sheet_2['POL_STATUS'] == 'ANF',sheet_2['POL_RISK_PAID_YEAR'],sheet_2['POL_PREM_PAID_YEAR'])
+    sheet_2['Completed_Months1'] = (((Val_date -sheet_2['ISSUANCE_DT']).dt.days) / 365 * 12)
+    sheet_2['Completed_Months2'] = np.where(sheet_2['POL_PREM_PAID_YEAR'] == sheet_2['PAYING_TERM'],sheet_2['POL_TERM'],sheet_2['Cond_PAID_Year']) * 12
+    sheet_2['Completed_Months'] = sheet_2[['Completed_Months1', 'Completed_Months2']].min(axis=1)
+    sheet_2['Time'] = (sheet_2['Completed_Months'] / 12).astype(int)
+    sheet_2['Time + 1'] = sheet_2['Time'] + 1
+    sheet_2["Fractional_Time"] = ((sheet_2['Completed_Months'] - (sheet_2['Time'] * 12)) / 12).astype(float)
+    sheet_2['Term'] = sheet_2['Entry_Age'].astype(str) + ("-") + sheet_2['POL_TERM'].astype(str)
+
+    sheet_2['1000_Axn'] = sheet_2.Term.map(Rates['1000Axn'])
+    sheet_2["sub1"] = pd.DataFrame(20 - sheet_2['PAYING_TERM']).astype(int)
+    # height = 10000
+    # width = 1
+    sheet_2["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    sheet_2["Max"] = (sheet_2.loc[:, ["Null", "sub1"]].apply(max, axis=1).astype(int)) * 0.05
+    sheet_2['1Ex'] = sheet_2.Term.map(Rates['1Ex'])
+    # sheet_2["1000nEx"] = "  "
+    sheet_2["PremTerm"] = (sheet_2['Entry_Age'] + 1).astype(str) + ("-") + (sheet_2['PAYING_TERM'] - 1).astype(str)
+    sheet_2["äx+1:m-1"] = sheet_2.PremTerm.map(Rates['axn'])
+    sheet_2["(NP)xn"] = ((sheet_2['1000_Axn']) / 1000 * sheet_2["SA"]) / (
+            sheet_2["Max"] + (sheet_2['1Ex'] * sheet_2["äx+1:m-1"]))
+
+    print(" ")
+    print("Done 20%...")
+    print(" ")
+
+    sheet_2["Term2"] = (sheet_2['Entry_Age'] + sheet_2['Time + 1']).astype(str) + ("-") + (
+            sheet_2['POL_TERM'] - sheet_2['Time + 1']).astype(str)
+    sheet_2["1000_Ax+t:n-t "] = (sheet_2.Term2.map(Rates['1000Axn'])).astype(float)
+    # sheet_2["1000 n-tEx+t "] = " "
+    sheet_2["(NP)xn2"] = sheet_2["(NP)xn"]
+    sheet_2["Term3"] = (sheet_2['Entry_Age'] + sheet_2["Time + 1"]).astype(str) + ("-") + (
+            sheet_2['PAYING_TERM'] - sheet_2['Time + 1']).astype(str)
+    sheet_2["äx+t:m-t"] = (sheet_2.Term3.map(Rates['axn'])).astype(float)
+    sheet_2["xVt_(t+1)"] = (((sheet_2["1000_Ax+t:n-t "] / 1000) * sheet_2["SA"]) - (
+            sheet_2["(NP)xn"] * sheet_2["äx+t:m-t"])).astype(float)
+
+    sheet_2["Term4"] = (sheet_2['Entry_Age'] + sheet_2['Time']).astype(str) + ("-") + (
+            sheet_2["POL_TERM"] - sheet_2['Time']).astype(str)
+    sheet_2["1000_Ax+t:n-t_(t=t)"] = (sheet_2.Term4.map(Rates['1000Axn'])).astype(float)
+    # sheet_2["1000_n-tEx+t (t=t)"] = " "
+    sheet_2["(NP)xn3"] = sheet_2["(NP)xn"]
+    sheet_2["Term5"] = (sheet_2['Entry_Age'] + sheet_2['Time']).astype(str) + ("-") + (
+            sheet_2["PAYING_TERM"] - sheet_2['Time']).astype(str)
+    sheet_2["äx+t:m-t_(t=t)"] = (sheet_2.Term5.map(Rates['axn'])).astype(float)
+
+    sheet_2["sub2"] = ((sheet_2["1000_Ax+t:n-t_(t=t)"] / 1000) * sheet_2["SA"]) - (
+            sheet_2["(NP)xn"] * sheet_2["äx+t:m-t_(t=t)"])
+    sheet_2["xVt_(t=t)"] = (sheet_2.loc[:, ["Null", "sub2"]].apply(max, axis=1).astype(float))
+
+    sheet_2["sub3"] = ((sheet_2["xVt_(t+1)"] - sheet_2["xVt_(t=t)"]) * sheet_2["Fractional_Time"]) + sheet_2[
+        "xVt_(t=t)"]
+    sheet_2["(xVt +1 - xVt )"] = (sheet_2.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_2['Entry_Age'] + sheet_2['Time']).astype(int)
+    sheet_2["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_2['SA']
+
+    sheet_2["Unearned_Period"] = 1 - sheet_2["Fractional_Time"]
+
+    # Xvt = pd.DataFrame(sheet_2["(xVt +1 - xVt )"])
+    sheet_2["Reserves"] = pd.DataFrame((sheet_2["Annual_Mort_Cost_Risk"] * sheet_2["Unearned_Period"]))
+    sheet_2["Final_Reserves"] = (sheet_2.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN3 VALUATION BEGIN HERE :
+
+    sheet_3 = pd.read_excel(path, sheet_name=2)
+    sheet_3['Total_PTF'] = sheet_3['PTF_RATE'] * sheet_3['PTF_AMT']
+    sheet_3['DOB'] = pd.to_datetime(sheet_3['DOB'])
+    sheet_3['ISSUANCE_DT'] = pd.to_datetime(sheet_3['ISSUANCE_DT'])
+    sheet_3['Entry_Age'] = ((((sheet_3['ISSUANCE_DT'] - sheet_3['DOB']).dt.days) / 365.25).round()).astype(int)
+    sheet_3['Maturity_Age'] = (sheet_3['Entry_Age'] + sheet_3['POL_TERM']).round()
+
+
+    sheet_3['Completed_Months'] = (((Val_date -sheet_3['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    
+    sheet_3['Time'] = (sheet_3['Completed_Months'] / 12).astype(int)
+    sheet_3['Time + 1'] = sheet_3['Time'] + 1
+    sheet_3["Fractional_Time"] = ((sheet_3['Completed_Months'] - (sheet_3['Time'] * 12)) / 12).astype(float)
+    sheet_3['Term'] = sheet_3['Entry_Age'].astype(str) + ("-") + sheet_3['POL_TERM'].astype(str)
+
+    sheet_3['1000_Axn'] = sheet_3.Term.map(Rates['1000Axn'])
+    sheet_3["sub1"] = pd.DataFrame(20 - sheet_3['PAYING_TERM']).astype(int)
+    # height = 10000
+    # width = 1
+    sheet_3["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    sheet_3["Max"] = (sheet_3.loc[:, ["Null", "sub1"]].apply(max, axis=1).astype(int)) * 0.05
+    sheet_3['1Ex'] = sheet_3.Term.map(Rates['1Ex'])
+    # sheet_3["1000nEx"] = "  "
+    sheet_3["PremTerm"] = (sheet_3['Entry_Age'] + 1).astype(str) + ("-") + (sheet_3['PAYING_TERM'] - 1).astype(str)
+    sheet_3["äx+1:m-1"] = sheet_3.PremTerm.map(Rates['axn'])
+    sheet_3["(NP)xn"] = ((sheet_3['1000_Axn']) / 1000 * sheet_3["SA"]) / (
+            sheet_3["Max"] + (sheet_3['1Ex'] * sheet_3["äx+1:m-1"]))
+
+    print(" ")
+    print("Done 30%...")
+    print(" ")
+
+    sheet_3["Term2"] = (sheet_3['Entry_Age'] + sheet_3['Time + 1']).astype(str) + ("-") + (
+            sheet_3['POL_TERM'] - sheet_3['Time + 1']).astype(str)
+    sheet_3["1000_Ax+t:n-t "] = (sheet_3.Term2.map(Rates['1000Axn'])).astype(float)
+    # sheet_3["1000 n-tEx+t "] = " "
+    sheet_3["(NP)xn2"] = sheet_3["(NP)xn"]
+    sheet_3["Term3"] = (sheet_3['Entry_Age'] + sheet_3["Time + 1"]).astype(str) + ("-") + (
+                sheet_3['PAYING_TERM'] - sheet_3['Time + 1']).astype(str)
+    sheet_3["äx+t:m-t"] = (sheet_3.Term3.map(Rates['axn'])).astype(float)
+    sheet_3["xVt_(t+1)"] = (((sheet_3["1000_Ax+t:n-t "] / 1000) * sheet_3["SA"]) - (
+                sheet_3["(NP)xn"] * sheet_3["äx+t:m-t"])).astype(float)
+
+    sheet_3["Term4"] = (sheet_3['Entry_Age'] + sheet_3['Time']).astype(str) + ("-") + (
+                sheet_3["POL_TERM"] - sheet_3['Time']).astype(str)
+    sheet_3["1000_Ax+t:n-t_(t=t)"] = (sheet_3.Term4.map(Rates['1000Axn'])).astype(float)
+    # sheet_3["1000_n-tEx+t (t=t)"] = " "
+    sheet_3["(NP)xn3"] = sheet_3["(NP)xn"]
+    sheet_3["Term5"] = (sheet_3['Entry_Age'] + sheet_3['Time']).astype(str) + ("-") + (
+                sheet_3["PAYING_TERM"] - sheet_3['Time']).astype(str)
+    sheet_3["äx+t:m-t_(t=t)"] = (sheet_3.Term5.map(Rates['axn'])).astype(float)
+
+    sheet_3["sub2"] = ((sheet_3["1000_Ax+t:n-t_(t=t)"] / 1000) * sheet_3["SA"]) - (
+                sheet_3["(NP)xn"] * sheet_3["äx+t:m-t_(t=t)"])
+    sheet_3["xVt_(t=t)"] = (sheet_3.loc[:, ["Null", "sub2"]].apply(max, axis=1).astype(float))
+
+    sheet_3["sub3"] = ((sheet_3["xVt_(t+1)"] - sheet_3["xVt_(t=t)"]) * sheet_3["Fractional_Time"]) + sheet_3[
+        "xVt_(t=t)"]
+    sheet_3["(xVt +1 - xVt )"] = (sheet_3.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_3['Entry_Age'] + sheet_3['Time']).astype(int)
+    sheet_3["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_3['SA']
+
+    sheet_3["Unearned_Period"] = 1 - sheet_3["Fractional_Time"]
+
+    # Xvt = pd.DataFrame(sheet_3["(xVt +1 - xVt )"])
+    sheet_3["Reserves"] = pd.DataFrame((sheet_3["Annual_Mort_Cost_Risk"] * sheet_3["Unearned_Period"]))
+    sheet_3["Final_Reserves"] = (sheet_3.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN4 VALUATION BEGIN HERE :
+
+    print(" ")
+    print("Done 40%...")
+    print(" ")
+
+    sheet_4 = pd.read_excel(path, sheet_name=3)
+    sheet_4['Total_PTF'] = sheet_4['PTF_RATE'] * sheet_4['PTF_AMT']
+    sheet_4['DOB'] = pd.to_datetime(sheet_4['DOB'])
+    sheet_4['ISSUANCE_DT'] = pd.to_datetime(sheet_4['ISSUANCE_DT'])
+    sheet_4['Entry_Age'] = ((((sheet_4['ISSUANCE_DT'] - sheet_4['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_4['Maturity_Age'] = (sheet_4['Entry_Age'] + sheet_4['POL_TERM']).round()
+
+    sheet_4['Completed_Months'] = (((Val_date -sheet_4['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    
+    sheet_4['Time'] = (sheet_4['Completed_Months'] / 12).astype(int)
+    sheet_4['Time + 1'] = sheet_4['Time'] + 1
+    sheet_4["Fractional_Time"] = ((sheet_4['Completed_Months'] - (sheet_4['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+
+    # sheet_4["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_4["(xVt +1 - xVt )"] = (sheet_4.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_4['Entry_Age'] + sheet_4['Time']).astype(int)
+    sheet_4["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_4['SA']
+
+    sheet_4["Unearned_Period"] = 1 - sheet_4["Fractional_Time"]
+
+    sheet_4["Final_Reserves"] = pd.DataFrame((sheet_4["Annual_Mort_Cost_Risk"] * sheet_4["Unearned_Period"]))
+    # sheet_4["Final_Reserves"] = (sheet_4.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    #
+
+    print(" ")
+    print("Done 50%...")
+    print(" ")
+
+    sheet_5 = pd.read_excel(path, sheet_name=4)
+    sheet_5['Total_PTF'] = sheet_5['PTF_RATE'] * sheet_5['PTF_AMT']
+    sheet_5['DOB'] = pd.to_datetime(sheet_5['DOB'])
+    sheet_5['ISSUANCE_DT'] = pd.to_datetime(sheet_5['ISSUANCE_DT'])
+    sheet_5['Entry_Age'] = ((((sheet_5['ISSUANCE_DT'] - sheet_5['DOB']).dt.days) / 365.25).round()).astype(int)
+    sheet_5['Maturity_Age'] = (sheet_5['Entry_Age'] + sheet_5['POL_TERM']).round()
+
+
+    sheet_5['Completed_Months'] = (((Val_date -sheet_5['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    
+    
+    sheet_5['Time'] = (sheet_5['Completed_Months'] / 12).astype(int)
+    sheet_5['Time + 1'] = sheet_5['Time'] + 1
+    sheet_5["Fractional_Time"] = ((sheet_5['Completed_Months'] - (sheet_5['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+    # sheet_5["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_5["(xVt +1 - xVt )"] = (sheet_5.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_5['Entry_Age'] + sheet_5['Time']).astype(int)
+    sheet_5["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_5['SA']
+
+    sheet_5["Unearned_Period"] = 1 - sheet_5["Fractional_Time"]
+
+    sheet_5["Final_Reserves"] = pd.DataFrame((sheet_5["Annual_Mort_Cost_Risk"] * sheet_5["Unearned_Period"]))
+    # sheet_5["Final_Reserves"] = (sheet_5.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN7 VALUATION BEGIN HERE :
+
+    print(" ")
+    print("Done 60%...")
+    print(" ")
+
+    sheet_6 = pd.read_excel(path, sheet_name=5)
+    sheet_6['Total_PTF'] = sheet_6['PTF_RATE'] * sheet_6['PTF_AMT']
+    sheet_6['DOB'] = pd.to_datetime(sheet_6['DOB'])
+    sheet_6['ISSUANCE_DT'] = pd.to_datetime(sheet_6['ISSUANCE_DT'])
+    sheet_6['Entry_Age'] = ((((sheet_6['ISSUANCE_DT'] - sheet_6['DOB']).dt.days) / 365.25).round()).astype(int)
+    sheet_6['Maturity_Age'] = (sheet_6['Entry_Age'] + sheet_6['POL_TERM']).round()
+
+
+    sheet_6['Completed_Months'] = (((Val_date -sheet_6['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    
+    sheet_6['Time'] = (sheet_6['Completed_Months'] / 12).astype(int)
+    sheet_6['Time + 1'] = sheet_6['Time'] + 1
+    sheet_6["Fractional_Time"] = ((sheet_6['Completed_Months'] - (sheet_6['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+    # sheet_6["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_6["(xVt +1 - xVt )"] = (sheet_6.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_6['Entry_Age'] + sheet_6['Time']).astype(int)
+    sheet_6["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_6['SA']
+
+    sheet_6["Unearned_Period"] = 1 - sheet_6["Fractional_Time"]
+
+    sheet_6["Final_Reserves"] = pd.DataFrame((sheet_6["Annual_Mort_Cost_Risk"] * sheet_6["Unearned_Period"]))
+    # sheet_6["Final_Reserves"] = (sheet_6.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN6 VALUATION BEGIN HERE :
+
+    print(" ")
+    print("Done 70%...")
+    print(" ")
+
+    sheet_7 = pd.read_excel(path, sheet_name=6)
+    sheet_7['Total_PTF'] = sheet_7['PTF_RATE'] * sheet_7['PTF_AMT']
+    sheet_7['DOB'] = pd.to_datetime(sheet_7['DOB'])
+    sheet_7['ISSUANCE_DT'] = pd.to_datetime(sheet_7['ISSUANCE_DT'])
+    sheet_7['Entry_Age'] = ((((sheet_7['ISSUANCE_DT'] - sheet_7['DOB']).dt.days + 1)/ 365.25).round()).astype(int)
+    sheet_7['Maturity_Age'] = (sheet_7['Entry_Age'] + sheet_7['POL_TERM']).round()
+    sheet_7['Completed_Months'] = (((Val_date -sheet_7['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    sheet_7['Remaining_Year'] = (sheet_7['POL_TERM'] - sheet_7['Completed_Months'] / 12).apply(np.ceil)
+    sheet_7['U_Sumassured'] = (((((1 - (1 + I_Rate) ** - sheet_7['Remaining_Year']) / I_Rate))*100).apply(np.ceil))/100 * sheet_7['BASIC_CONT'] * 2
+    #sheet_7['U_Sumassured'] = np.round(sheet_7['U_Sumassured'],decimals=2) * sheet_7['BASIC_CONT'] * 2
+    sheet_7['Time'] = (sheet_7['Completed_Months'] / 12).astype(int)
+    sheet_7['Time + 1'] = sheet_7['Time'] + 1
+    sheet_7["Fractional_Time"] = ((sheet_7['Completed_Months'] - (sheet_7['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+
+    # sheet_7["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_7["(xVt +1 - xVt )"] = (sheet_7.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_7['Entry_Age'] + sheet_7['Time']).astype(int)
+    sheet_7["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_7['U_Sumassured']
+
+    sheet_7["Unearned_Period"] = 1 - sheet_7["Fractional_Time"]
+
+    sheet_7["Final_Reserves"] = pd.DataFrame((sheet_7["Annual_Mort_Cost_Risk"] * sheet_7["Unearned_Period"]))
+    # sheet_7["Final_Reserves"] = (sheet_7.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN8 VALUATION BEGIN HERE :
+
+    print(" ")
+    print("Done 80%...")
+    print(" ")
+
+    sheet_8 = pd.read_excel(path, sheet_name=7)
+    sheet_8['Total_PTF'] = sheet_8['PTF_RATE'] * sheet_8['PTF_AMT']
+    sheet_8['DOB'] = pd.to_datetime(sheet_8['DOB'])
+    sheet_8['ISSUANCE_DT'] = pd.to_datetime(sheet_8['ISSUANCE_DT'])
+    sheet_8['Entry_Age'] = ((((sheet_8['ISSUANCE_DT'] - sheet_8['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_8['Maturity_Age'] = (sheet_8['Entry_Age'] + sheet_8['POL_TERM']).round()
+
+
+    sheet_8['Completed_Months'] = (((Val_date -sheet_8['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+
+    sheet_8['Remaining_Year'] = (sheet_8['POL_TERM'] - sheet_8['Completed_Months'] / 12).apply(np.ceil)
+    sheet_8['U_Sumassured'] = (((((1 - (1 + I_Rate) ** -sheet_8['Remaining_Year']) / I_Rate))*100).apply(np.ceil))/100 * sheet_8[
+        'BASIC_CONT'] * 2
+    sheet_8['Time'] = (sheet_8['Completed_Months'] / 12).astype(int)
+    sheet_8['Time + 1'] = sheet_8['Time'] + 1
+    sheet_8["Fractional_Time"] = ((sheet_8['Completed_Months'] - (sheet_8['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+    # sheet_8["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_8["(xVt +1 - xVt )"] = (sheet_8.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_8['Entry_Age'] + sheet_8['Time']).astype(int)
+    sheet_8["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_8['U_Sumassured']
+
+    sheet_8["Unearned_Period"] = 1 - sheet_8["Fractional_Time"]
+
+    sheet_8["Final_Reserves"] = pd.DataFrame((sheet_8["Annual_Mort_Cost_Risk"] * sheet_8["Unearned_Period"]))
+    # sheet_8["Final_Reserves"] = (sheet_8.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN11 Education Plan VALUATION BEGIN HERE :
+
+    print(" ")
+    print("Done 90%...")
+    print(" ")
+
+    sheet_9 = pd.read_excel(path, sheet_name=8)
+    sheet_9['Total_PTF'] = sheet_9['PTF_RATE'] * sheet_9['PTF_AMT']
+    sheet_9['DOB'] = pd.to_datetime(sheet_9['DOB'])
+    sheet_9['ISSUANCE_DT'] = pd.to_datetime(sheet_9['ISSUANCE_DT'])
+    sheet_9['Entry_Age'] = ((((sheet_9['ISSUANCE_DT'] - sheet_9['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_9['Maturity_Age'] = (sheet_9['Entry_Age'] + sheet_9['POL_TERM']).round()
+
+
+    sheet_9['Completed_Months'] = (((Val_date -sheet_9['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    
+    sheet_9['Time'] = (sheet_9['Completed_Months'] / 12).astype(int)
+    sheet_9['Time + 1'] = sheet_9['Time'] + 1
+    sheet_9["Fractional_Time"] = ((sheet_9['Completed_Months'] - (sheet_9['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+    # sheet_9["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_9["(xVt +1 - xVt )"] = (sheet_9.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_9['Entry_Age'] + sheet_9['Time']).astype(int)
+    sheet_9["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_9['SA']
+
+    sheet_9["Unearned_Period"] = 1 - sheet_9["Fractional_Time"]
+
+    sheet_9["Final_Reserves"] = pd.DataFrame((sheet_9["Annual_Mort_Cost_Risk"] * sheet_9["Unearned_Period"]))
+    # sheet_9["Final_Reserves"] = (sheet_9.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN12 Education Plan VALUATION BEGIN HERE :
+
+    print(" ")
+    print("Done 95%...")
+    print(" ")
+
+    sheet_10 = pd.read_excel(path, sheet_name=9)
+    sheet_10['Total_PTF'] = sheet_10['PTF_RATE'] * sheet_10['PTF_AMT']
+    sheet_10['DOB'] = pd.to_datetime(sheet_10['DOB'])
+    sheet_10['ISSUANCE_DT'] = pd.to_datetime(sheet_10['ISSUANCE_DT'])
+    sheet_10['Entry_Age'] = ((((sheet_10['ISSUANCE_DT'] - sheet_10['DOB']).dt.days) / 365.25).round()).astype(int)
+    sheet_10['Maturity_Age'] = (sheet_10['Entry_Age'] + sheet_10['POL_TERM']).round()
+
+
+    sheet_10['Completed_Months'] = (((Val_date -sheet_10['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    
+
+    sheet_10['Time'] = (sheet_10['Completed_Months'] / 12).astype(int)
+    sheet_10['Time + 1'] = sheet_10['Time'] + 1
+    sheet_10["Fractional_Time"] = ((sheet_10['Completed_Months'] - (sheet_10['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+
+    # sheet_10["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_10["(xVt +1 - xVt )"] = (sheet_10.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_10['Entry_Age'] + sheet_10['Time']).astype(int)
+    sheet_10["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_10['SA']
+
+    sheet_10["Unearned_Period"] = 1 - sheet_10["Fractional_Time"]
+
+    sheet_10["Final_Reserves"] = pd.DataFrame((sheet_10["Annual_Mort_Cost_Risk"] * sheet_10["Unearned_Period"]))
+    # sheet_10["Final_Reserves"] = (sheet_10.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # PLAN9 Plan VALUATION BEGIN HERE :
+
+    print(" ")
+    print("Done 97%...")
+    print(" ")
+
+    sheet_11 = pd.read_excel(path, sheet_name=10)
+    sheet_11['Total_PTF'] = sheet_11['PTF_RATE'] * sheet_11['PTF_AMT']
+    sheet_11['DOB'] = pd.to_datetime(sheet_11['DOB'])
+    sheet_11['ISSUANCE_DT'] = pd.to_datetime(sheet_11['ISSUANCE_DT'])
+    sheet_11['Entry_Age'] = ((((sheet_11['ISSUANCE_DT'] - sheet_11['DOB']).dt.days) / 365.25).round()).astype(int)
+    sheet_11['Maturity_Age'] = (sheet_11['Entry_Age'] + sheet_11['POL_TERM']).round()
+
+    sheet_11['Cond_PAID_Year'] = np.where(sheet_11['POL_STATUS'] == 'ANF',sheet_11['POL_RISK_PAID_YEAR'],
+                                        sheet_11['POL_PREM_PAID_YEAR'])
+    sheet_11['Completed_Months1'] = (((Val_date -sheet_11['ISSUANCE_DT']).dt.days) / 365 * 12)
+    sheet_11['Completed_Months2'] = np.where(sheet_11['POL_PREM_PAID_YEAR'] ==sheet_11['PAYING_TERM'],
+                                           sheet_11['POL_TERM'],sheet_11['Cond_PAID_Year']) * 12
+    sheet_11['Completed_Months'] =sheet_11[['Completed_Months1', 'Completed_Months2']].min(axis=1)
+
+    
+    sheet_11['Completed_Months'] = (((Val_date - sheet_11['ISSUANCE_DT']).dt.days) / 365 * 12)
+    sheet_11['Time'] = (sheet_11['Completed_Months'] / 12).astype(int)
+    sheet_11['Time + 1'] = sheet_11['Time'] + 1
+    sheet_11["Fractional_Time"] = ((sheet_11['Completed_Months'] - (sheet_11['Time'] * 12)) / 12).astype(float)
+
+    # height = 10000
+    # width = 1
+
+    # sheet_11["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    # sheet_11["(xVt +1 - xVt )"] = (sheet_11.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_11['Entry_Age'] + sheet_11['Time']).astype(int)
+    sheet_11["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_11['SA']
+
+    sheet_11["Unearned_Period"] = 1 - sheet_11["Fractional_Time"]
+
+    sheet_11["Final_Reserves"] = pd.DataFrame((sheet_11["Annual_Mort_Cost_Risk"] * sheet_11["Unearned_Period"]))
+    # sheet_11["Final_Reserves"] = (sheet_11.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    # print(" ")
+
+    # PLAN10 Plan VALUATION BEGIN HERE :
+
+    sheet_12 = pd.read_excel(path, sheet_name=11)
+    sheet_12['Total_PTF'] = sheet_12['PTF_RATE'] * sheet_12['PTF_AMT']
+    sheet_12['DOB'] = pd.to_datetime(sheet_12['DOB'])
+    sheet_12['ISSUANCE_DT'] = pd.to_datetime(sheet_12['ISSUANCE_DT'])
+    sheet_12['Entry_Age'] = ((((sheet_12['ISSUANCE_DT'] - sheet_12['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_12['Maturity_Age'] = (sheet_12['Entry_Age'] + sheet_12['POL_TERM']).round()
+    sheet_12['Cond_PAID_Year'] = np.where(sheet_12['POL_STATUS'] == 'ANF',sheet_12['POL_RISK_PAID_YEAR'],sheet_12['POL_PREM_PAID_YEAR'])
+    sheet_12['Completed_Months1'] = (((Val_date -sheet_12['ISSUANCE_DT']).dt.days) / 365 * 12)
+    sheet_12['Completed_Months2'] = np.where(sheet_12['Cond_PAID_Year'] == sheet_12['PAYING_TERM'],sheet_12['POL_TERM'],sheet_12['Cond_PAID_Year']) * 12
+    sheet_12['Completed_Months'] =sheet_12[['Completed_Months1', 'Completed_Months2']].min(axis=1)
+
+
+    sheet_12['Time'] = (sheet_12['Completed_Months'] / 12).astype(int)
+    sheet_12['Time + 1'] = sheet_12['Time'] + 1
+    sheet_12["Fractional_Time"] = ((sheet_12['Completed_Months'] - (sheet_12['Time'] * 12)) / 12).astype(float)
+    sheet_12['Term'] = sheet_12['Entry_Age'].astype(str) + ("-") + sheet_12['POL_TERM'].astype(str)
+
+    sheet_12['1000_Axn'] = sheet_12.Term.map(Rates['1000Axn'])
+    sheet_12["1000_Axn"].fillna(0, inplace=True)
+    sheet_12["sub1"] = pd.DataFrame(20 - sheet_12['PAYING_TERM']).astype(int)
+    height = 10000
+    width = 1
+    sheet_12["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    sheet_12["Max"] = (sheet_12.loc[:, ["Null", "sub1"]].apply(max, axis=1).astype(int)) * 0.05
+    sheet_12['1Ex'] = sheet_12.Term.map(Rates['1Ex'])
+    sheet_12["1000nEx"] = sheet_12.Term.map(Rates['1000nEx'])
+    sheet_12["PremTerm"] = (sheet_12['Entry_Age'] + 1).astype(str) + ("-") + (sheet_12['PAYING_TERM'] - 1).astype(str)
+    sheet_12["äx+1:m-1"] = sheet_12.PremTerm.map(Rates['axn'])
+    sheet_12["(NP)xn"] = ((sheet_12['1000_Axn'] + sheet_12["1000nEx"]) / 1000 * sheet_12["SA"]) / (
+                sheet_12["Max"] + (sheet_12['1Ex'] * sheet_12["äx+1:m-1"]))
+
+    sheet_12["Term2"] = (sheet_12['Entry_Age'] + sheet_12['Time + 1']).astype(str) + ("-") + (
+                sheet_12['POL_TERM'] - sheet_12['Time + 1']).astype(str)
+    sheet_12["1000_Ax+t:n-t "] = np.where((sheet_12['POL_TERM']-sheet_12['Time + 1'])<=0,0,(sheet_12.Term2.map(Rates['1000Axn'])).astype(float))
+    sheet_12["1000_Ax+t:n-t "].fillna(0, inplace=True)
+    sheet_12["1000 n-tEx+t "] = np.where((sheet_12['POL_TERM']-sheet_12['Time + 1'])<=0,1000,(sheet_12.Term2.map(Rates['1000nEx'])).astype(float))
+    sheet_12["1000 n-tEx+t "].fillna(1000, inplace=True)
+    sheet_12["(NP)xn2"] = sheet_12["(NP)xn"].astype(float)
+    sheet_12["Term3"] = (sheet_12['Entry_Age'] + sheet_12["Time + 1"]).astype(str) + ("-") + (
+                sheet_12['PAYING_TERM'] - sheet_12['Time + 1']).astype(str)
+    sheet_12["äx+t:m-t"] = np.where((sheet_12['PAYING_TERM']-sheet_12['Time + 1'])<=0,0,(sheet_12.Term3.map(Rates['axn'])).astype(float))
+    sheet_12["äx+t:m-t"].fillna(0, inplace=True)
+    sheet_12["xVt_(t+1)"] = (( (sheet_12["1000_Ax+t:n-t "] + sheet_12["1000 n-tEx+t "]) / 1000) * sheet_12["SA"]) - ((sheet_12["(NP)xn2"] * sheet_12["äx+t:m-t"]))
+
+    sheet_12["Term4"] = (sheet_12['Entry_Age'] + sheet_12['Time']).astype(str) + ("-") + (
+                sheet_12["POL_TERM"] - sheet_12['Time']).astype(str)
+    sheet_12["1000_Ax+t:n-t_(t=t)"] = np.where((sheet_12['POL_TERM']-sheet_12['Time'])<=0,0,(sheet_12.Term4.map(Rates['1000Axn'])).astype(float))
+    sheet_12["1000_Ax+t:n-t_(t=t)"].fillna(0, inplace=True)
+    sheet_12["1000_n-tEx+t (t=t)"] = np.where((sheet_12['POL_TERM']-sheet_12['Time'])<=0,1000,(sheet_12.Term4.map(Rates['1000nEx'])).astype(float))
+    sheet_12["1000_n-tEx+t (t=t)"].fillna(0, inplace=True)
+    sheet_12["(NP)xn3"] = sheet_12["(NP)xn"]
+    sheet_12["Term5"] = (sheet_12['Entry_Age'] + sheet_12['Time']).astype(str) + ("-") + (
+                sheet_12["PAYING_TERM"] - sheet_12['Time']).astype(str)
+    sheet_12["äx+t:m-t_(t=t)"] = np.where((sheet_12['PAYING_TERM']-sheet_12['Time'])<=0,0,(sheet_12.Term5.map(Rates['axn'])).astype(float))
+    sheet_12["äx+t:m-t_(t=t)"].fillna(0, inplace=True)
+    sheet_12["sub2"] = (((sheet_12["1000_Ax+t:n-t_(t=t)"] + sheet_12["1000_n-tEx+t (t=t)"]) / 1000) * sheet_12[
+        "SA"]) - (sheet_12["(NP)xn3"] * sheet_12["äx+t:m-t_(t=t)"])
+    sheet_12["xVt_(t=t)"] = (sheet_12.loc[:, ["Null", "sub2"]].apply(max, axis=1).astype(float))
+
+    sheet_12["sub3"] = ((sheet_12["xVt_(t+1)"] - sheet_12["xVt_(t=t)"]) * sheet_12["Fractional_Time"]) + sheet_12[
+        "xVt_(t=t)"]
+    sheet_12["(xVt +1 - xVt )"] = (sheet_12.loc[:, ["Null", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_12['Entry_Age'] + sheet_12['Time']).astype(int)
+    sheet_12["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_12['SA']
+    sheet_12["Annual_Mort_Cost_Risk"].fillna(0, inplace=True)
+    sheet_12["Unearned_Period"] = 1 - sheet_12["Fractional_Time"]
+
+    # Xvt = pd.DataFrame(sheet_12["(xVt +1 - xVt )"])
+    sheet_12["Reserves"] = pd.DataFrame((sheet_12["Annual_Mort_Cost_Risk"] * sheet_12["Unearned_Period"]))
+    sheet_12["Final_Reserves"] = (sheet_12.loc[:, ["(xVt +1 - xVt )","Reserves"]].apply(max, axis=1).astype(float))
+
+    # PLAN1 “ “ Plan VALUATION BEGIN HERE :
+
+    sheet_13 = pd.read_excel(path, sheet_name=12)
+    sheet_13['Total_PTF'] = sheet_13['PTF_RATE'] * sheet_13['PTF_AMT']
+    sheet_13['DOB'] = pd.to_datetime(sheet_13['DOB'])
+    sheet_13['ISSUANCE_DT'] = pd.to_datetime(sheet_13['ISSUANCE_DT'])
+    sheet_13['Entry_Age'] = ((((sheet_13['ISSUANCE_DT'] - sheet_13['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_13['Maturity_Age'] = (sheet_13['Entry_Age'] + sheet_13['POL_TERM']).round()
+    sheet_13['Completed_Months1'] = (((Val_date - sheet_13['ISSUANCE_DT']).dt.days) / 365 * 12)
+
+    sheet_13['Completed_Months2'] = np.where(sheet_13['POL_RISK_PAID_YEAR'] == sheet_13['PAYING_TERM'],
+                                             sheet_13['POL_TERM'], sheet_13['POL_RISK_PAID_YEAR']) * 12
+    sheet_13['Completed_Months'] = sheet_13[['Completed_Months1', 'Completed_Months2']].min(axis=1)
+
+    # sheet_13['Completed_Months'] = np.where(sheet_13['POL_STATUS'] == 'ANF',sheet_13['POL_RISK_PAID_YEAR'] , sheet_13['POL_RISK_PAID_YEAR'])*12
+    sheet_13['Time'] = (sheet_13['Completed_Months'] / 12).astype(int)
+    sheet_13['Time + 1'] = sheet_13['Time'] + 1
+    sheet_13["Fractional_Time"] = ((sheet_13['Completed_Months'] - (sheet_13['Time'] * 12)) / 12).astype(float)
+    sheet_13['Term'] = sheet_13['Entry_Age'].astype(str) + ("-") + sheet_13['POL_TERM'].astype(str)
+
+    sheet_13['1000_Axn'] = sheet_13.Term.map(Rates['1000Axn'])
+    sheet_13["sub1"] = pd.DataFrame(20 - sheet_13['PAYING_TERM']).astype(int)
+    height = 10000
+    width = 1
+    sheet_13["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    sheet_13["Max"] = (sheet_13.loc[:, ["Null", "sub1"]].apply(max, axis=1).astype(int)) * 0.05
+    sheet_13['1Ex'] = sheet_13.Term.map(Rates['1Ex'])
+    # sheet_13["1000nEx"] = "  "
+    sheet_13["PremTerm"] = (sheet_13['Entry_Age'] + 1).astype(str) + ("-") + (sheet_13['PAYING_TERM'] - 1).astype(str)
+    sheet_13["äx+1:m-1"] = sheet_13.PremTerm.map(Rates['axn'])
+    sheet_13["(NP)xn"] = ((sheet_13['1000_Axn']) / 1000 * sheet_13["SA"]) / (
+            sheet_13["Max"] + (sheet_13['1Ex'] * sheet_13["äx+1:m-1"]))
+
+    print(" ")
+    print("Done 98%...")
+    print(" ")
+
+    sheet_13["Term2"] = (sheet_13['Entry_Age'] + sheet_13['Time + 1']).astype(str) + ("-") + (
+            sheet_13['POL_TERM'] - sheet_13['Time + 1']).astype(str)
+    sheet_13["1000_Ax+t:n-t "] = (sheet_13.Term2.map(Rates['1000Axn'])).astype(float)
+    # sheet_13["1000 n-tEx+t "] = " "
+    sheet_13["(NP)xn2"] = sheet_13["(NP)xn"]
+    sheet_13["Term3"] = (sheet_13['Entry_Age'] + sheet_13["Time + 1"]).astype(str) + ("-") + (
+            sheet_13['PAYING_TERM'] - sheet_13['Time + 1']).astype(str)
+    sheet_13["äx+t:m-t"] = (sheet_13.Term3.map(Rates['axn'])).astype(float)
+    sheet_13["xVt_(t+1)"] = (((sheet_13["1000_Ax+t:n-t "] / 1000) * sheet_13["SA"]) - (
+            sheet_13["(NP)xn"] * sheet_13["äx+t:m-t"])).astype(float)
+
+    sheet_13["Term4"] = (sheet_13['Entry_Age'] + sheet_13['Time']).astype(str) + ("-") + (
+            sheet_13["POL_TERM"] - sheet_13['Time']).astype(str)
+    sheet_13["1000_Ax+t:n-t_(t=t)"] = (sheet_13.Term4.map(Rates['1000Axn'])).astype(float)
+    # sheet_13["1000_n-tEx+t (t=t)"] = " "
+    sheet_13["(NP)xn3"] = sheet_13["(NP)xn"]
+    sheet_13["Term5"] = (sheet_13['Entry_Age'] + sheet_13['Time']).astype(str) + ("-") + (
+            sheet_13["PAYING_TERM"] - sheet_13['Time']).astype(str)
+    sheet_13["äx+t:m-t_(t=t)"] = (sheet_13.Term5.map(Rates['axn'])).astype(float)
+
+    sheet_13["sub2"] = ((sheet_13["1000_Ax+t:n-t_(t=t)"] / 1000) * sheet_13["SA"]) - (
+            sheet_13["(NP)xn"] * sheet_13["äx+t:m-t_(t=t)"])
+    sheet_13["xVt_(t=t)"] = (sheet_13.loc[:, ["Null", "sub2"]].apply(max, axis=1).astype(float))
+
+    sheet_13["sub3"] = ((sheet_13["xVt_(t+1)"] - sheet_13["xVt_(t=t)"]) * sheet_13["Fractional_Time"]) + sheet_13[
+        "xVt_(t=t)"]
+    sheet_13["(xVt +1 - xVt )"] = (sheet_13.loc[:, ["sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_13['Entry_Age'] + sheet_13['Time']).astype(int)
+    sheet_13["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_13['SA'] * 0
+
+    sheet_13["Unearned_Period"] = 1 - sheet_13["Fractional_Time"]
+
+    # Xvt = pd.DataFrame(sheet_13["(xVt +1 - xVt )"])
+    sheet_13["Reserves"] = ((sheet_13["xVt_(t+1)"] - sheet_13["xVt_(t=t)"]) * sheet_13["Fractional_Time"] + sheet_13["xVt_(t=t)"])
+    sheet_13["Reserves"] = (sheet_13.loc[:, ["Reserves", "Annual_Mort_Cost_Risk"]].apply(max, axis=1).astype(float))
+
+    sheet_13["Final_Reserves"] = (sheet_13.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+    sheet_13["Final_Reserves"].fillna(sheet_13["xVt_(t=t)"], inplace=True)
+    # sheet_13["Final_Reserves"] = (sheet_13.loc[:, ["xVt_(t=t)", "Final_Reserves"]].apply(max, axis=1).astype(float))
+    # sheet_13["Reserves"] = (sheet_13.loc[:, ["Reserves", "Final_Reserves"]].apply(max, axis=1).astype(float))
+
+    # PLAN10 “ “ Plan VALUATION BEGIN HERE :
+
+    sheet_14 = pd.read_excel(path, sheet_name=13)
+    sheet_14['Total_PTF'] = sheet_14['PTF_RATE'] * sheet_14['PTF_AMT']
+    sheet_14['DOB'] = pd.to_datetime(sheet_14['DOB'])
+    sheet_14['ISSUANCE_DT'] = pd.to_datetime(sheet_14['ISSUANCE_DT'])
+    sheet_14['Entry_Age'] = ((((sheet_14['ISSUANCE_DT'] - sheet_14['DOB']).dt.days + 1) / 365.25).round()).astype(int)
+    sheet_14['Maturity_Age'] = (sheet_14['Entry_Age'] + sheet_14['POL_TERM']).round()
+
+    sheet_14['Completed_Months1'] = (((Val_date - sheet_14['ISSUANCE_DT']).dt.days) / 365 * 12)
+    sheet_14['Completed_Months2'] = np.where(sheet_14['POL_RISK_PAID_YEAR'] == sheet_14['PAYING_TERM'],
+                                            sheet_14['POL_TERM'], sheet_14['POL_RISK_PAID_YEAR']) * 12
+    sheet_14['Completed_Months'] = sheet_14[['Completed_Months1', 'Completed_Months2']].min(axis=1)
+
+
+    sheet_14['Time'] = (sheet_14['Completed_Months'] / 12).astype(int)
+    sheet_14['Time + 1'] = sheet_14['Time'] + 1
+    sheet_14["Fractional_Time"] = ((sheet_14['Completed_Months'] - (sheet_14['Time'] * 12)) / 12).astype(float)
+    sheet_14['Term'] = sheet_14['Entry_Age'].astype(str) + ("-") + sheet_14['POL_TERM'].astype(str)
+
+    sheet_14['1000_Axn'] = sheet_14.Term.map(Rates['1000Axn'])
+    sheet_14["sub1"] = pd.DataFrame(20 - sheet_14['PAYING_TERM']).astype(int)
+    height = 10000
+    width = 1
+    sheet_14["Null"] = pd.DataFrame(0, index=range(height), columns=range(width)).astype(int)
+    sheet_14["Max"] = (sheet_14.loc[:, ["Null", "sub1"]].apply(max, axis=1).astype(int)) * 0.05
+    sheet_14['1Ex'] = sheet_14.Term.map(Rates['1Ex'])
+    sheet_14["1000nEx"] = sheet_14.Term.map(Rates['1000nEx'])
+    sheet_14["PremTerm"] = (sheet_14['Entry_Age'] + 1).astype(str) + ("-") + (sheet_14['PAYING_TERM'] - 1).astype(str)
+    sheet_14["äx+1:m-1"] = sheet_14.PremTerm.map(Rates['axn'])
+    sheet_14["(NP)xn"] = ((sheet_14['1000_Axn'] + sheet_14["1000nEx"]) / 1000 * sheet_14["SA"]) / (
+            sheet_14["Max"] + (sheet_14['1Ex'] * sheet_14["äx+1:m-1"]))
+
+    print(" ")
+    print("Done 99%...")
+    print(" ")
+
+    sheet_14["Term2"] = (sheet_14['Entry_Age'] + sheet_14['Time + 1']).astype(str) + ("-") + (
+            sheet_14['POL_TERM'] - sheet_14['Time + 1']).astype(str)
+    sheet_14["1000_Ax+t:n-t "] = np.where((sheet_14['POL_TERM']- sheet_14['Time + 1']) <= 0,0,(sheet_14.Term2.map(Rates['1000Axn'])).astype(float))
+    sheet_14["1000 n-tEx+t "] = np.where((sheet_14['POL_TERM'] - sheet_14['Time + 1'])<= 0, 1000 , sheet_14.Term2.map(Rates['1000nEx']))
+    sheet_14["(NP)xn2"] = sheet_14["(NP)xn"]
+    sheet_14["Term3"] = (sheet_14['Entry_Age'] + sheet_14["Time + 1"]).astype(str) + ("-") + (
+            sheet_14['PAYING_TERM'] - sheet_14['Time + 1']).astype(str)
+    sheet_14["äx+t:m-t"] = np.where((sheet_14['PAYING_TERM'] - sheet_14['Time + 1'])<= 0, 0, (sheet_14.Term3.map(Rates['axn'])).astype(float))
+    sheet_14["äx+t:m-t"].fillna(0, inplace=True)
+    sheet_14["xVt_(t+1)"] = ((((sheet_14["1000_Ax+t:n-t "] + sheet_14["1000 n-tEx+t "])/ 1000) * sheet_14["SA"]) - (sheet_14["(NP)xn"] * sheet_14["äx+t:m-t"])).astype(float)
+
+    sheet_14["Term4"] = (sheet_14['Entry_Age'] + sheet_14['Time']).astype(str) + ("-") + (
+            sheet_14["POL_TERM"] - sheet_14['Time']).astype(str)
+    sheet_14["1000_Ax+t:n-t_(t=t)"] = np.where((sheet_14['POL_TERM'] - sheet_14['Time'])<= 0, 0, (sheet_14.Term4.map(Rates['1000Axn'])).astype(float))
+    sheet_14["1000_n-tEx+t (t=t)"] = np.where((sheet_14['POL_TERM'] - sheet_14['Time'])<= 0, 1000 ,(sheet_14.Term4.map(Rates['1000nEx'])).astype(float))
+    sheet_14["(NP)xn3"] = sheet_14["(NP)xn"]
+    sheet_14["Term5"] = (sheet_14['Entry_Age'] + sheet_14['Time']).astype(str) + ("-") + (
+            sheet_14["PAYING_TERM"] - sheet_14['Time']).astype(str)
+    sheet_14["äx+t:m-t_(t=t)"] = np.where((sheet_14['PAYING_TERM'] - sheet_14['Time'])<= 0, 0, (sheet_14.Term5.map(Rates['axn'])).astype(float))
+    sheet_14["äx+t:m-t_(t=t)"].fillna(0, inplace=True)
+
+    sheet_14["sub2"] = (((sheet_14["1000_Ax+t:n-t_(t=t)"] + sheet_14["1000_n-tEx+t (t=t)"]) / 1000) * sheet_14["SA"]) - (
+            sheet_14["(NP)xn"] * sheet_14["äx+t:m-t_(t=t)"])
+    sheet_14["xVt_(t=t)"] = (sheet_14.loc[:, ["Null", "sub2"]].apply(max, axis=1).astype(float))
+
+    sheet_14["sub3"] = ((sheet_14["xVt_(t+1)"] - sheet_14["xVt_(t=t)"]) * sheet_14["Fractional_Time"]) + sheet_14[
+        "xVt_(t=t)"]
+    sheet_14["(xVt +1 - xVt )"] = (sheet_14.loc[:, ["xVt_(t=t)", "sub3"]].apply(max, axis=1).astype(float))
+
+    Term6 = (sheet_14['Entry_Age'] + sheet_14['Time']).astype(int)
+    sheet_14["Annual_Mort_Cost_Risk"] = (Term6.map(mortality['Qx'])).astype(float) * sheet_14['SA'] * 0
+
+    sheet_14["Unearned_Period"] = 1 - sheet_14["Fractional_Time"]
+
+    # Xvt = pd.DataFrame(sheet_14["(xVt +1 - xVt )"])
+    sheet_14["Reserves"] = pd.DataFrame((sheet_14["Annual_Mort_Cost_Risk"] * sheet_14["Unearned_Period"]))
+    sheet_14["Final_Reserves"] = (sheet_14.loc[:, ["Reserves", "(xVt +1 - xVt )"]].apply(max, axis=1).astype(float))
+
+    print("Completed 100%...")
+    print(" ")
+    print("Please wait...")
+    print(" ")
+
+    sheet_1.to_excel(writer, sheet_name='PLAN1')
+    sheet_2.to_excel(writer, sheet_name='PLAN2')
+    sheet_3.to_excel(writer, sheet_name='PLAN3')
+    sheet_4.to_excel(writer, sheet_name='PLAN4')
+    sheet_5.to_excel(writer, sheet_name='PLAN5')
+    sheet_6.to_excel(writer, sheet_name='PLAN7')
+    sheet_7.to_excel(writer, sheet_name='PLAN6')
+    sheet_8.to_excel(writer, sheet_name='PLAN8')
+    sheet_9.to_excel(writer, sheet_name='PLAN11')
+    sheet_10.to_excel(writer, sheet_name='PLAN12')
+    sheet_11.to_excel(writer, sheet_name='PLAN9')
+    sheet_12.to_excel(writer, sheet_name='PLAN10')
+    sheet_13.to_excel(writer, sheet_name='PLAN1_” “')
+    sheet_14.to_excel(writer, sheet_name='PLAN10_” “')
+
+    writer.save()
+    writer.close()
+
+    # PLAN1_Reserves = sheet_1["Final_Reserves"].sum()
+    # PLAN2_Reserves = sheet_2["Final_Reserves"].sum()
+    # PLAN3_Reserves = sheet_3["Final_Reserves"].sum()
+    # PLAN4_Reserves = sheet_4["Final_Reserves"].sum()
+    # PLAN5 = sheet_5["Final_Reserves"].sum()
+    # PLAN14_Reserves = sheet_6["Final_Reserves"].sum()
+    # PLAN6_Reserves = sheet_7["Final_Reserves"].sum()
+    # PLAN8_Reserves = sheet_8["Final_Reserves"].sum()
+    # PLAN11_Reserves = sheet_9["Final_Reserves"].sum()
+    # PLAN12_Reserves = sheet_10["Final_Reserves"].sum()
+    # PLAN9_Reserves = sheet_11["Final_Reserves"].sum()
+    # PLAN10_Reserves = sheet_12["Final_Reserves"].sum()
+    # PLAN1_” “_Reserves = sheet_13["Final_Reserves"].sum()
+    # PLAN10_” “_Reserves = sheet_14["Final_Reserves"].sum()
+    #
+    #
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="RESERVES SUMMARY", ln=1, align="C")
+    pdf.cell(200, 10, txt="PLAN1 Reserves are: " + format(sheet_1["Final_Reserves"].sum(), ',.0f'), ln=3)
+    pdf.cell(200, 10, txt="PLAN2 Reserves are: " + format(sheet_2["Final_Reserves"].sum(), ',.0f'), ln=4)
+    pdf.cell(200, 10, txt="PLAN3 Reserves are: " + format(sheet_3["Final_Reserves"].sum(), ',.0f'), ln=5)
+    pdf.cell(200, 10, txt="PLAN4 Reserves are: " + format(sheet_4["Final_Reserves"].sum(), ',.0f'), ln=6)
+    pdf.cell(200, 10, txt="Silk Secure Reserves are: " + format(sheet_5["Final_Reserves"].sum(), ',.0f'), ln=7)
+    pdf.cell(200, 10, txt="PLAN5 are: " + format(sheet_6["Final_Reserves"].sum(), ',.0f'), ln=8)
+    pdf.cell(200, 10, txt="PLAN6 Reserves are: " + format(sheet_7["Final_Reserves"].sum(), ',.0f'), ln=9)
+    pdf.cell(200, 10, txt="PLAN7 " + format(sheet_8["Final_Reserves"].sum(), ',.0f'), ln=10)
+    pdf.cell(200, 10, txt="PLAN11 Reserves are: " + format(sheet_9["Final_Reserves"].sum(), ',.0f'), ln=11)
+    pdf.cell(200, 10, txt="PLAN12 Reserves are: " + format(sheet_10["Final_Reserves"].sum(), ',.0f'), ln=12)
+    pdf.cell(200, 10, txt="PLAN9 are: " + format(sheet_11["Final_Reserves"].sum(), ',.0f'), ln=13)
+    pdf.cell(200, 10, txt="PLAN10 Reserves are: " + format(sheet_12["Final_Reserves"].sum(), ',.0f'), ln=14)
+    pdf.cell(200, 10, txt="PLAN1 “ “ Reserves are: " + format(sheet_13["Final_Reserves"].sum(), ',.0f'), ln=15)
+    pdf.cell(200, 10, txt="PLAN10 “ “ Reserves are: " + format(sheet_14["Final_Reserves"].sum(), ',.0f'), ln=16)
+
+    pdf.output("Reserves Summary.pdf")
+
+    
+    print(" ")
+    print("---  Valuation Completed in %s seconds ---" % (time.time() - start_time))
+
+
+main()
+
